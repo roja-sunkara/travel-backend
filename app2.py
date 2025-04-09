@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 import requests
-import openai
+from openai import OpenAI
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -9,7 +9,7 @@ CORS(app)
 # Replace with your actual API keys
 TRAVEL_API_KEY = "your_travel_api_key"
 OPENAI_API_KEY = "your_openai_api_key"
-openai.api_key = OPENAI_API_KEY
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 # Search Tickets
 @app.route('/search_tickets', methods=['GET'])
@@ -47,12 +47,20 @@ def chatbot():
     if not user_input:
         return jsonify({"error": "No input provided"}), 400
 
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": user_input}]
-    )
-    reply = response["choices"][0]["message"]["content"]
-    return jsonify({"reply": reply})
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful travel assistant."},
+                {"role": "user", "content": user_input}
+            ]
+        )
+        reply = response.choices[0].message.content
+        return jsonify({"reply": reply})
+    except Exception as e:
+        print("Chatbot error:", e)
+        return jsonify({"error": "Chatbot failed."}), 500
+
 # Search for available hotels
 @app.route('/search_hotels', methods=['GET'])
 def search_hotels():
@@ -61,7 +69,7 @@ def search_hotels():
     if not city:
         return jsonify({"error": "Missing required parameter: city"}), 400
 
-    # Simulated hotel data (this acts like a real database or API)
+    # Simulated hotel data
     dummy_hotels = {
         "vijayawada": [
             {"name": "Hotel Ilapuram", "price": 1800},
@@ -71,11 +79,3 @@ def search_hotels():
             {"name": "Taj Club House", "price": 4500},
             {"name": "The Park Chennai", "price": 3900}
         ]
-    }
-
-    hotels = dummy_hotels.get(city.lower(), [])
-    return jsonify({"hotels": hotels})
-
-
-if __name__ == '__main__':
-    app.run(debug=True)
