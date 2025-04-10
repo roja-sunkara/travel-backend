@@ -1,17 +1,15 @@
 from flask import Flask, request, jsonify
-import requests
-from openai import OpenAI
 from flask_cors import CORS
+import openai
 
 app = Flask(__name__)
 CORS(app)
 
-# Replace with your actual API keys
-TRAVEL_API_KEY = "your_travel_api_key"
+# Replace with your actual OpenAI API key
 OPENAI_API_KEY = "your_openai_api_key"
-client = OpenAI(api_key=OPENAI_API_KEY)
+openai.api_key = OPENAI_API_KEY
 
-# Search Tickets
+# ------------------ Ticket Search Endpoint ------------------
 @app.route('/search_tickets', methods=['GET'])
 def search_tickets():
     source = request.args.get('source')
@@ -27,20 +25,33 @@ def search_tickets():
     ]
     return jsonify({"results": results})
 
-# Book Ticket
-@app.route('/book_ticket', methods=['POST'])
-def book_ticket():
-    data = request.json
+# ------------------ Hotel Search Endpoint ------------------
+@app.route('/search_hotels', methods=['GET'])
+def search_hotels():
+    city = request.args.get('city')
 
-    if not data.get("user_id") or not data.get("ticket_id"):
-        return jsonify({"error": "Missing required parameters"}), 400
+    if not city:
+        return jsonify({"error": "Missing required parameter: city"}), 400
 
-    return jsonify({
-        "message": "Ticket booked successfully!",
-        "ticket_id": data["ticket_id"]
-    })
+    dummy_hotels = {
+        "vijayawada": [
+            {"name": "Hotel Ilapuram", "price": 1800},
+            {"name": "Midtown Hotel", "price": 2200}
+        ],
+        "chennai": [
+            {"name": "Taj Club House", "price": 4500},
+            {"name": "The Park Chennai", "price": 3900}
+        ],
+        "bangalore": [
+            {"name": "The Oberoi", "price": 5500},
+            {"name": "ITC Gardenia", "price": 5200}
+        ]
+    }
 
-# Chatbot (OpenAI)
+    hotels = dummy_hotels.get(city.lower(), [])
+    return jsonify({"hotels": hotels})
+
+# ------------------ Chatbot Endpoint ------------------
 @app.route('/chatbot', methods=['POST'])
 def chatbot():
     user_input = request.json.get("message")
@@ -48,7 +59,7 @@ def chatbot():
         return jsonify({"error": "No input provided"}), 400
 
     try:
-        response = client.chat.completions.create(
+        response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful travel assistant."},
@@ -61,21 +72,21 @@ def chatbot():
         print("Chatbot error:", e)
         return jsonify({"error": "Chatbot failed."}), 500
 
-# Search for available hotels
-@app.route('/search_hotels', methods=['GET'])
-def search_hotels():
-    city = request.args.get('city')
+# ------------------ Book Ticket Endpoint ------------------
+@app.route('/book_ticket', methods=['POST'])
+def book_ticket():
+    data = request.json
 
-    if not city:
-        return jsonify({"error": "Missing required parameter: city"}), 400
+    if not data.get("user_id") or not data.get("ticket_id"):
+        return jsonify({"error": "Missing required parameters"}), 400
 
-    # Simulated hotel data
-    dummy_hotels = {
-        "vijayawada": [
-            {"name": "Hotel Ilapuram", "price": 1800},
-            {"name": "Midtown Hotel", "price": 2200}
-        ],
-        "chennai": [
-            {"name": "Taj Club House", "price": 4500},
-            {"name": "The Park Chennai", "price": 3900}
-        ]
+    return jsonify({
+        "message": "Ticket booked successfully!",
+        "ticket_id": data["ticket_id"]
+    })
+
+# ------------------ Run App (for local testing) ------------------
+if __name__ == '__main__':
+    app.run(debug=True)
+
+
